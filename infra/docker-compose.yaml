@@ -1,0 +1,18 @@
+version: "3.9"  # optional since v1.27.0
+services:
+  bot:
+    image: romasku/car-lookup-bot:latest
+    environment:
+      REDIS_URL: "redis://redis:6379"
+    depends_on:
+      - redis
+    ports:
+      - "5000:5000"
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+volumes:
+    redis_data:

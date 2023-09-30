@@ -1,19 +1,23 @@
+from __future__ import annotations
+
 import abc
 import asyncio
 import datetime
+import logging
 import secrets
 import textwrap
+from collections.abc import Iterable
 from contextlib import suppress
 from typing import Any
 
 from aiogram import Bot
 from pydantic import BaseModel, Field
 
-from car_lookup_bot.car_info_readers import CarInfo, RiaCarReader
+from car_lookup_bot.car_info_readers import CarInfo, CarReader, RiaCarReader
 
 
 class Subscription(BaseModel):
-    id: str = Field(default_factory=lambda: secrets.token_hex(10))
+    id: str = Field(default_factory=lambda: secrets.token_hex(3))
     ria_url: str
     chat_id: int
 
@@ -34,11 +38,11 @@ class SubscriptionRepoABC(abc.ABC):
 
 class CarRepoABC(abc.ABC):
     @abc.abstractmethod
-    async def add_car(self, car_info: CarInfo) -> None:
+    async def add_car(self, car_info: CarInfo, subs_id: str) -> None:
         pass
 
     @abc.abstractmethod
-    async def has_car(self, car_info: CarInfo) -> bool:
+    async def has_car(self, car_info: CarInfo, subs_id: str) -> bool:
         pass
 
 
@@ -56,7 +60,7 @@ class SubscriptionsService:
         self._car_repo = car_repo
         self._pooling_interval = pooling_interval
 
-    async def __aenter__(self) -> "SubscriptionsService":
+    async def __aenter__(self) -> SubscriptionsService:
         old_subs = await self._subs_repo.list_subscriptions()
         for sub in old_subs:
             self._start_processing(sub)
@@ -70,6 +74,8 @@ class SubscriptionsService:
 
     async def add_subscription(self, sub: Subscription) -> None:
         await self._subs_repo.add_subscription(sub)
+        readers = [RiaCarReader(sub.ria_url)]
+        await self._process_once(sub, readers, limit_send_cnt=3)
         self._start_processing(sub)
 
     async def list_subscriptions(self, chat_id: int) -> list[Subscription]:
@@ -91,14 +97,29 @@ class SubscriptionsService:
     async def _processor(self, sub: Subscription) -> None:
         readers = [RiaCarReader(sub.ria_url)]
         while True:
-            for reader in readers:
-                cars = await reader.read_cars()
-                for car in cars:
-                    if await self._car_repo.has_car(car):
-                        continue
-                    await self._send_notification(car, sub.chat_id)
-                    await self._car_repo.add_car(car)
+            try:
+                await self._process_once(sub, readers)
+            except Exception:
+                logging.exception("Failed to poll new cars")
+
             await asyncio.sleep(self._pooling_interval.total_seconds())
+
+    async def _process_once(
+        self,
+        sub: Subscription,
+        readers: Iterable[CarReader],
+        limit_send_cnt: int | None = None,
+    ) -> None:
+        sent = 0
+        for reader in readers:
+            cars = await reader.read_cars()
+            for car in reversed(cars):
+                if await self._car_repo.has_car(car, sub.id):
+                    continue
+                if limit_send_cnt is None or sent < limit_send_cnt:
+                    await self._send_notification(car, sub.chat_id)
+                    sent += 1
+                await self._car_repo.add_car(car, sub.id)
 
     async def _send_notification(self, car: CarInfo, chat_id: int) -> None:
         await self._bot.send_photo(

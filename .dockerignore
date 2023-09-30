@@ -1,0 +1,20 @@
+.git/
+.env.local
+
+build
+dist
+*.egg-info
+*.egg/
+*.pyc
+*.swp
+
+.tox
+.coverage
+data/
+html/*
+__pycache__
+
+# Compiled Documentation
+docs/_build
+venv
+.venv

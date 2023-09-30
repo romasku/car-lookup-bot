@@ -62,8 +62,10 @@ async def command_subscribe(
         ria_url=url,
         chat_id=message.chat.id,
     )
+    await message.answer(
+        f"Подписка {sub.id} на обновления создана, вот последние 3 машины:"
+    )
     await subs_service.add_subscription(sub)
-    await message.answer(f"Подписка {sub.id} на обновления создана")
 
 
 @router.message(Command("subscriptions"))
@@ -71,9 +73,12 @@ async def command_subscriptions(
     message: types.Message, subs_service: SubscriptionsService
 ) -> None:
     subs = await subs_service.list_subscriptions(message.chat.id)
-    await message.answer(
-        "\n".join([f"Подписка {sub.id} на {sub.ria_url}" for sub in subs])
-    )
+    if len(subs) == 0:
+        await message.answer("У вас пока что нет подписок")
+    else:
+        await message.answer(
+            "\n".join([f"Подписка {sub.id} на {sub.ria_url}" for sub in subs])
+        )
 
 
 @router.message(Command("unsubscribe"))
