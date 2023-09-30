@@ -113,7 +113,7 @@ class SubscriptionsService:
         sent = 0
         for reader in readers:
             cars = await reader.read_cars()
-            for car in reversed(cars):
+            for car in cars:
                 if await self._car_repo.has_car(car, sub.id):
                     continue
                 if limit_send_cnt is None or sent < limit_send_cnt:
