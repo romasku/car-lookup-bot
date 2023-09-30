@@ -1,0 +1,67 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 'v4.3.0'
+    hooks:
+      - id: check-merge-conflict
+  - repo: https://github.com/asottile/yesqa
+    rev: v1.3.0
+    hooks:
+      - id: yesqa
+  - repo: https://github.com/sondrelg/pep585-upgrade
+    rev: v1.0
+    hooks:
+      - id: upgrade-type-hints
+        args:
+          - --futures=true
+  - repo: https://github.com/Zac-HD/shed
+    rev: 2023.5.1
+    hooks:
+      - id: shed
+        args:
+          - --py39-plus
+        types_or:
+          - python
+  - repo: https://github.com/PyCQA/flake8
+    rev: 4.0.1
+    hooks:
+      - id: flake8
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 'v4.3.0'
+    hooks:
+      - id: detect-private-key
+      - id: check-case-conflict
+      - id: check-toml
+      - id: check-json
+      - id: check-xml
+      - id: debug-statements
+      - id: check-added-large-files
+      - id: end-of-file-fixer
+        exclude: '_code.txt$'
+      - id: requirements-txt-fixer
+      - id: trailing-whitespace
+      - id: check-symlinks
+      - id: debug-statements
+  # Another entry is required to apply file-contents-sorter to another file
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 'v4.3.0'
+    hooks:
+      - id: file-contents-sorter
+        files: |
+          .gitignore
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        language: python
+        pass_filenames: False
+        types_or: [ python, pyi ]
+        require_serial: True
+        entry: mypy
+        args: [car_lookup_bot, tests]
+      - id: pip-compile
+        name: Update requirements.txt via pip-compile
+        entry: pip-compile
+        language: system
+        args: [--extra-index-url=https://gitlab.com/api/v4/projects/48396830/packages/pypi/simple]
+        files: setup.cfg
+        pass_filenames: false
