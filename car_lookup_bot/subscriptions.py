@@ -1,0 +1,116 @@
+import abc
+import asyncio
+import datetime
+import secrets
+import textwrap
+from contextlib import suppress
+from typing import Any
+
+from aiogram import Bot
+from pydantic import BaseModel, Field
+
+from car_lookup_bot.car_info_readers import CarInfo, RiaCarReader
+
+
+class Subscription(BaseModel):
+    id: str = Field(default_factory=lambda: secrets.token_hex(10))
+    ria_url: str
+    chat_id: int
+
+
+class SubscriptionRepoABC(abc.ABC):
+    @abc.abstractmethod
+    async def add_subscription(self, subscription: Subscription) -> None:
+        pass
+
+    @abc.abstractmethod
+    async def list_subscriptions(self) -> list[Subscription]:
+        pass
+
+    @abc.abstractmethod
+    async def drop_subscription(self, subscription: Subscription) -> None:
+        pass
+
+
+class CarRepoABC(abc.ABC):
+    @abc.abstractmethod
+    async def add_car(self, car_info: CarInfo) -> None:
+        pass
+
+    @abc.abstractmethod
+    async def has_car(self, car_info: CarInfo) -> bool:
+        pass
+
+
+class SubscriptionsService:
+    def __init__(
+        self,
+        bot: Bot,
+        subs_repo: SubscriptionRepoABC,
+        car_repo: CarRepoABC,
+        pooling_interval: datetime.timedelta = datetime.timedelta(minutes=1),
+    ) -> None:
+        self._tasks: dict[str, asyncio.Task[None]] = {}
+        self._bot = bot
+        self._subs_repo = subs_repo
+        self._car_repo = car_repo
+        self._pooling_interval = pooling_interval
+
+    async def __aenter__(self) -> "SubscriptionsService":
+        old_subs = await self._subs_repo.list_subscriptions()
+        for sub in old_subs:
+            self._start_processing(sub)
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        for task in self._tasks.values():
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+
+    async def add_subscription(self, sub: Subscription) -> None:
+        await self._subs_repo.add_subscription(sub)
+        self._start_processing(sub)
+
+    async def list_subscriptions(self, chat_id: int) -> list[Subscription]:
+        subs = await self._subs_repo.list_subscriptions()
+        return [sub for sub in subs if sub.chat_id == chat_id]
+
+    async def drop_subscription(self, subs: Subscription) -> None:
+        await self._subs_repo.drop_subscription(subs)
+        if task := self._tasks.pop(subs.id):
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+
+    def _start_processing(self, sub: Subscription) -> None:
+        if sub.id in self._tasks:
+            return
+        self._tasks[sub.id] = asyncio.create_task(self._processor(sub))
+
+    async def _processor(self, sub: Subscription) -> None:
+        readers = [RiaCarReader(sub.ria_url)]
+        while True:
+            for reader in readers:
+                cars = await reader.read_cars()
+                for car in cars:
+                    if await self._car_repo.has_car(car):
+                        continue
+                    await self._send_notification(car, sub.chat_id)
+                    await self._car_repo.add_car(car)
+            await asyncio.sleep(self._pooling_interval.total_seconds())
+
+    async def _send_notification(self, car: CarInfo, chat_id: int) -> None:
+        await self._bot.send_photo(
+            chat_id=chat_id,
+            photo=car.image_url,
+            caption=textwrap.dedent(
+                f"""\
+                <b>{car.name}: {car.year}</b>
+                Цена: {car.price_usd}$ {car.price_uah} грн
+                Пробег: {car.mileage_km // 1000} тысяч км
+                Добавлена в {car.add_time.strftime("%H:%M:%S %Y-%m-%d")}
+                <a href="{car.link}">Детали</a>
+                """
+            ),
+        )
