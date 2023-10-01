@@ -15,6 +15,8 @@ from pydantic import BaseModel, Field
 
 from car_lookup_bot.car_info_readers import CarInfo, CarReader, RiaCarReader
 
+logger = logging.getLogger(__name__)
+
 
 class Subscription(BaseModel):
     id: str = Field(default_factory=lambda: secrets.token_hex(3))
@@ -73,6 +75,7 @@ class SubscriptionsService:
                 await task
 
     async def add_subscription(self, sub: Subscription) -> None:
+        logger.info(f"Adding new subscription {sub}")
         await self._subs_repo.add_subscription(sub)
         readers = [RiaCarReader(sub.ria_url)]
         await self._process_once(sub, readers, limit_send_cnt=3)
@@ -118,6 +121,10 @@ class SubscriptionsService:
                     continue
                 if limit_send_cnt is None or sent < limit_send_cnt:
                     await self._send_notification(car, sub.chat_id)
+                    logger.info(
+                        f"Sending message to {sub.chat_id} about "
+                        f"car {car.provider_car_id}"
+                    )
                     sent += 1
                 await self._car_repo.add_car(car, sub.id)
 

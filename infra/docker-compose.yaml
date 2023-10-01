@@ -3,16 +3,15 @@ services:
   bot:
     image: romasku/car-lookup-bot:latest
     environment:
-      REDIS_URL: "redis://redis:6379"
+      REDIS_URL: "redis://:envMBFIRANmC4yd8paX4Fw5tYKmWt2E0G6RGZbUL@redis:6379"
     depends_on:
       - redis
-    ports:
-      - "5000:5000"
   redis:
-    image: redis:latest
-    ports:
-      - "6379:6379"
+    image: bitnami/redis:latest
+    environment:
+      - DISABLE_COMMANDS=FLUSHDB,FLUSHALL,CONFIG
+      - REDIS_PASSWORD=envMBFIRANmC4yd8paX4Fw5tYKmWt2E0G6RGZbUL
     volumes:
-      - redis_data:/data
+      - redis_data:/bitnami
 volumes:
     redis_data:
