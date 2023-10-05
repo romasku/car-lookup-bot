@@ -137,7 +137,9 @@ class SubscriptionsService:
             except Exception:
                 logging.exception("Failed to poll new cars")
             else:
-                sub.last_update = datetime.datetime.now()
+                sub.last_update = datetime.datetime.now(
+                    tz=datetime.timezone(datetime.timedelta(hours=3))
+                )
                 await self._subs_repo.update_subscription(sub)
             await asyncio.sleep(self._pooling_interval.total_seconds())
 
@@ -152,7 +154,9 @@ class SubscriptionsService:
                 )
                 logging.exception("Failed to poll new talons")
             else:
-                sub.last_update = datetime.datetime.now()
+                sub.last_update = datetime.datetime.now(
+                    tz=datetime.timezone(datetime.timedelta(hours=3))
+                )
             sub.conf.webchsid2 = reader.get_current_webchsid2()
             await self._subs_repo.update_subscription(sub)
 
