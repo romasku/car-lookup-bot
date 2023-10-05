@@ -136,7 +136,7 @@ async def command_subscribe_ticket(
         conf=conf,
         chat_id=message.chat.id,
     )
-    await message.answer(f"Подписка {sub.id} на талони создана.")
+    await message.answer(f"Подписка {sub.id} на талоны создана.")
     await subs_service.add_subscription(sub)
 
 
