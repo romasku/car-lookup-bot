@@ -8,6 +8,9 @@ class InMemoryAuctionRepo(SubscriptionRepoABC):
     async def add_subscription(self, subscription: Subscription) -> None:
         self.subs[subscription.id] = subscription
 
+    async def update_subscription(self, subscription: Subscription) -> None:
+        self.subs[subscription.id] = subscription
+
     async def list_subscriptions(self) -> list[Subscription]:
         return list(self.subs.values())
 
