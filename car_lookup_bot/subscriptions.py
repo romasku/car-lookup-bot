@@ -23,12 +23,14 @@ class CarSubscription(BaseModel):
     id: str = Field(default_factory=lambda: secrets.token_hex(3))
     ria_url: str
     chat_id: int
+    last_update: datetime.datetime | None = None
 
 
 class TicketSubscription(BaseModel):
     id: str = Field(default_factory=lambda: secrets.token_hex(3))
     conf: TickerReaderConf
     chat_id: int
+    last_update: datetime.datetime | None = None
 
 
 Subscription = Union[CarSubscription, TicketSubscription]
@@ -134,7 +136,9 @@ class SubscriptionsService:
                 await self._car_process_once(sub, readers)
             except Exception:
                 logging.exception("Failed to poll new cars")
-
+            else:
+                sub.last_update = datetime.datetime.now()
+                await self._subs_repo.update_subscription(sub)
             await asyncio.sleep(self._pooling_interval.total_seconds())
 
     async def _ticket_processor(self, sub: TicketSubscription) -> None:
@@ -147,6 +151,8 @@ class SubscriptionsService:
                     chat_id=sub.chat_id, text="Ошибка при загрузке талонов"
                 )
                 logging.exception("Failed to poll new talons")
+            else:
+                sub.last_update = datetime.datetime.now()
             sub.conf.webchsid2 = reader.get_current_webchsid2()
             await self._subs_repo.update_subscription(sub)
 
