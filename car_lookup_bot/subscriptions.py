@@ -143,7 +143,10 @@ class SubscriptionsService:
             try:
                 await self._ticket_process_once(sub, reader)
             except Exception:
-                logging.exception("Failed to poll new cars")
+                await self._bot.send_message(
+                    chat_id=sub.chat_id, text="Ошибка при загрузке талонов"
+                )
+                logging.exception("Failed to poll new talons")
             sub.conf.webchsid2 = reader.get_current_webchsid2()
             await self._subs_repo.update_subscription(sub)
 
