@@ -81,7 +81,7 @@ class SubscriptionsService:
         subs_repo: SubscriptionRepoABC,
         car_repo: CarRepoABC,
         ticket_repo: TicketRepoABC,
-        pooling_interval: datetime.timedelta = datetime.timedelta(minutes=1),
+        pooling_interval: datetime.timedelta = datetime.timedelta(seconds=30),
     ) -> None:
         self._tasks: dict[str, asyncio.Task[None]] = {}
         self._bot = bot
