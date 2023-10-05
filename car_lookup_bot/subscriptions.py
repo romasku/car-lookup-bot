@@ -146,9 +146,9 @@ class SubscriptionsService:
         while True:
             try:
                 await self._ticket_process_once(sub, reader)
-            except Exception:
+            except Exception as e:
                 await self._bot.send_message(
-                    chat_id=sub.chat_id, text="Ошибка при загрузке талонов"
+                    chat_id=sub.chat_id, text=f"Ошибка при загрузке талонов: {e}"
                 )
                 logging.exception("Failed to poll new talons")
             else:

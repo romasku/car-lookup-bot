@@ -66,7 +66,7 @@ class TicketReader:
             "https://eq.hsc.gov.ua/site/freetimes",
             content=f"office_id={self._conf.office_id}&date_of_admission={self._conf.date.strftime('%Y-%m-%d')}&question_id=56&es_date=&es_time=",  # noqa
         )
-        assert resp.status_code == 200
+        resp.raise_for_status()
         data = resp.json()
         res: list[Ticket] = []
         for row in data["rows"]:

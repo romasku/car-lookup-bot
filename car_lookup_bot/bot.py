@@ -129,7 +129,7 @@ async def command_subscribe_ticket(
             await reader.get_tickets()
             conf.webchsid2 = reader.get_current_webchsid2()
     except Exception:
-        await message.answer(f"Ошибка при загрузке резальтатов. Токены рабочие?")
+        await message.answer(f"Ошибка при загрузке результатов. Токены рабочие?")
         return
 
     sub = TicketSubscription(
