@@ -24,8 +24,8 @@ from car_lookup_bot.subscriptions import (
     TicketSubscription,
 )
 
-# TOKEN = "6569853340:AAGF-aPdFyKK1ZkJuJ8ysjciKBkfANqdXHg"
-TOKEN = "6471025208:AAEr4GcALPGey1Ws5Jg3yx9Ovi8Ju--n0tM"  # Local token
+TOKEN = "6569853340:AAGF-aPdFyKK1ZkJuJ8ysjciKBkfANqdXHg"
+# TOKEN = "6471025208:AAEr4GcALPGey1Ws5Jg3yx9Ovi8Ju--n0tM"  # Local token
 
 # All handlers should be attached to the Router (or Dispatcher)
 
