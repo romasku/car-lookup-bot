@@ -188,14 +188,11 @@ class SubscriptionsService:
         sub: TicketSubscription,
         reader: TicketReader,
     ) -> None:
-        tickets = await reader.get_tickets()
-        for ticket in tickets:
+        async for ticket in reader.get_tickets():
             if await self._ticket_repo.has_ticket(ticket, sub.id):
                 continue
             await self._send_ticket_notification(ticket, sub.chat_id)
-            logger.info(
-                f"Sending message to {sub.chat_id} about " f"ticket {ticket.id}"
-            )
+            logger.info(f"Sending message to {sub.chat_id} about ticket {ticket.id}")
             await self._ticket_repo.add_ticket(ticket, sub.id)
 
     async def _send_car_notification(self, car: CarInfo, chat_id: int) -> None:

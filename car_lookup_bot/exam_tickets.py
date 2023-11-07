@@ -1,9 +1,16 @@
+from __future__ import annotations
+
+import asyncio
 import datetime
+import logging
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
 from httpx import Cookies
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class TickerReaderConf(BaseModel):
@@ -12,7 +19,9 @@ class TickerReaderConf(BaseModel):
     webchsid2: str
     csrf_header: str
     office_id: str
-    date: datetime.date
+    date_start: datetime.date
+    date_end: datetime.date
+    pause_between_requests: datetime.timedelta = datetime.timedelta(seconds=1)
 
 
 def setup_client(conf: TickerReaderConf) -> httpx.AsyncClient:
@@ -52,7 +61,7 @@ class TicketReader:
         self._client = setup_client(conf)
         self._conf = conf
 
-    async def __aenter__(self) -> "TicketReader":
+    async def __aenter__(self) -> TicketReader:
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -61,10 +70,23 @@ class TicketReader:
     def get_current_webchsid2(self) -> str:
         return self._client.cookies.get("WEBCHSID2") or ""
 
-    async def get_tickets(self) -> list[Ticket]:
+    async def get_tickets(self) -> AsyncIterator[Ticket]:
+        day_cnt = (self._conf.date_end - self._conf.date_start).days + 1
+        for day_idx in range(day_cnt):
+            res = await self._get_tickets(
+                self._conf.date_start + datetime.timedelta(days=day_idx)
+            )
+            for ticket in res:
+                yield ticket
+            await asyncio.sleep(self._conf.pause_between_requests.total_seconds())
+
+    async def _get_tickets(self, date: datetime.date) -> list[Ticket]:
+        logger.info(f"Requesting tickets for date {date}")
         resp = await self._client.post(
             "https://eq.hsc.gov.ua/site/freetimes",
-            content=f"office_id={self._conf.office_id}&date_of_admission={self._conf.date.strftime('%Y-%m-%d')}&question_id=56&es_date=&es_time=",  # noqa
+            content=f"office_id={self._conf.office_id}"
+            f"&date_of_admission={date.strftime('%Y-%m-%d')}"
+            f"&question_id=55&es_date=&es_time=",
         )
         resp.raise_for_status()
         data = resp.json()
@@ -74,7 +96,7 @@ class TicketReader:
                 Ticket(
                     id=str(row["id"]),
                     time=datetime.datetime.combine(
-                        self._conf.date,
+                        date,
                         datetime.datetime.strptime(row["chtime"], "%H:%M").time(),
                     ),
                     office_id=self._conf.office_id,

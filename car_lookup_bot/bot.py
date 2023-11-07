@@ -24,8 +24,8 @@ from car_lookup_bot.subscriptions import (
     TicketSubscription,
 )
 
-TOKEN = "6569853340:AAGF-aPdFyKK1ZkJuJ8ysjciKBkfANqdXHg"
-# TOKEN = "6471025208:AAEr4GcALPGey1Ws5Jg3yx9Ovi8Ju--n0tM"  # Local token
+# TOKEN = "6569853340:AAGF-aPdFyKK1ZkJuJ8ysjciKBkfANqdXHg"
+TOKEN = "6471025208:AAEr4GcALPGey1Ws5Jg3yx9Ovi8Ju--n0tM"  # Local token
 
 # All handlers should be attached to the Router (or Dispatcher)
 
@@ -92,17 +92,18 @@ async def command_subscribe_ticket(
         await message.answer(f"Нужно указать дату")
         return
 
-    args = command.args.split(" ", maxsplit=2)
+    args = command.args.split(" ", maxsplit=3)
     print(args)
 
-    if len(args) == 3:
-        date_str, office_id, tokens_raw = args[0], args[1], args[2]
+    if len(args) == 4:
+        date_start_str, date_end_str, office_id, tokens_raw = args
     else:
         await message.answer(f"Неправильное кол-во параметров")
         return
 
     try:
-        date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
+        date_start = datetime.datetime.strptime(date_start_str, "%Y-%m-%d")
+        date_end = datetime.datetime.strptime(date_end_str, "%Y-%m-%d")
     except Exception:
         await message.answer(
             f"Неправильная дата. Формат yyyy-mm-dd, например 2023-10-10"
@@ -121,12 +122,13 @@ async def command_subscribe_ticket(
         csrf_header=tokens.csrf_header,
         webchsid2=tokens.webchsid2,
         office_id=office_id,
-        date=date,
+        date_start=date_start,
+        date_end=date_end,
     )
 
     try:
         async with TicketReader(conf) as reader:
-            await reader.get_tickets()
+            await reader._get_tickets(date_start)
             conf.webchsid2 = reader.get_current_webchsid2()
     except Exception:
         await message.answer(f"Ошибка при загрузке результатов. Токены рабочие?")
@@ -145,7 +147,7 @@ def _make_sub_desc(sub: Subscription) -> str:
     if isinstance(sub, CarSubscription):
         res += f" на {sub.ria_url}"
     if isinstance(sub, TicketSubscription):
-        res += f" на талоны на {sub.conf.date}"
+        res += f" на талоны на {sub.conf.date_start}-{sub.conf.date_end}"
     if sub.last_update is not None:
         res += f" (последние обновление {sub.last_update.strftime('%H:%M:%S')})"
     return res
