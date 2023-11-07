@@ -147,7 +147,7 @@ def _make_sub_desc(sub: Subscription) -> str:
     if isinstance(sub, CarSubscription):
         res += f" на {sub.ria_url}"
     if isinstance(sub, TicketSubscription):
-        res += f" на талоны на {sub.conf.date_start}-{sub.conf.date_end}"
+        res += f" на талоны на c {sub.conf.date_start} по {sub.conf.date_end}"
     if sub.last_update is not None:
         res += f" (последние обновление {sub.last_update.strftime('%H:%M:%S')})"
     return res
