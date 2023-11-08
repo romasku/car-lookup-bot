@@ -137,9 +137,7 @@ class SubscriptionsService:
             except Exception:
                 logging.exception("Failed to poll new cars")
             else:
-                sub.last_update = datetime.datetime.now(
-                    tz=datetime.timezone(datetime.timedelta(hours=2))
-                )
+                sub.last_update = self._get_now()
                 await self._subs_repo.update_subscription(sub)
             await asyncio.sleep(self._pooling_interval.total_seconds())
 
@@ -149,14 +147,17 @@ class SubscriptionsService:
             try:
                 await self._ticket_process_once(sub, reader)
             except Exception as e:
-                await self._bot.send_message(
-                    chat_id=sub.chat_id, text=f"Ошибка при загрузке талонов: {e}"
-                )
+                now = self._get_now()
+                if sub.last_update is not None and (
+                    (now - sub.last_update) > datetime.timedelta(minutes=10)
+                ):
+                    await self._bot.send_message(
+                        chat_id=sub.chat_id,
+                        text=f"Ошибка при загрузке талонов уже более " f"10 минут: {e}",
+                    )
                 logging.exception("Failed to poll new talons")
             else:
-                sub.last_update = datetime.datetime.now(
-                    tz=datetime.timezone(datetime.timedelta(hours=2))
-                )
+                sub.last_update = self._get_now()
             sub.conf.webchsid2 = reader.get_current_webchsid2()
             await self._subs_repo.update_subscription(sub)
 
@@ -222,3 +223,6 @@ class SubscriptionsService:
                 """
             ),
         )
+
+    def _get_now(self) -> datetime.datetime:
+        return datetime.datetime.now(tz=datetime.timezone(datetime.timedelta(hours=2)))
