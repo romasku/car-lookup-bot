@@ -149,12 +149,14 @@ class SubscriptionsService:
             except Exception as e:
                 now = self._get_now()
                 if sub.last_update is not None and (
-                    (now - sub.last_update) > datetime.timedelta(minutes=10)
+                    (now - sub.last_update) > datetime.timedelta(minutes=15)
                 ):
                     await self._bot.send_message(
                         chat_id=sub.chat_id,
-                        text=f"Ошибка при загрузке талонов уже более " f"10 минут: {e}",
+                        text=f"Ошибка при загрузке талонов уже более 15 минут: {e}",
                     )
+                    await self._subs_repo.drop_subscription(sub)
+                    return
                 logging.exception("Failed to poll new talons")
             else:
                 sub.last_update = self._get_now()
