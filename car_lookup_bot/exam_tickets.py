@@ -21,7 +21,7 @@ class TickerReaderConf(BaseModel):
     office_id: str
     date_start: datetime.date
     date_end: datetime.date
-    pause_between_requests: datetime.timedelta = datetime.timedelta(seconds=1)
+    pause_between_requests: datetime.timedelta = datetime.timedelta(seconds=2)
 
 
 def setup_client(conf: TickerReaderConf) -> httpx.AsyncClient:
